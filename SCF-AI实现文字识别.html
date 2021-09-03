@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Apigw-Scf-Demo</title>
+</head>
+
+<body>
+    <h2>上传文件</h2>
+    <div id='fileContainer'>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input id="file" type="file" name="file" />
+        </form>
+        <div id="filePreviewer" style="width:600px;"></div>
+    </div>
+
+    <hr>
+    <h2>云函数处理后展示</h2>
+    <div id="showContainer" style="width:600px;">
+        <p class="loadingTips" style="display: none;">图片识别中...</p>
+    </div>
+</body>
+<!-- <script src="<base64的库>"></script> -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script>
+    /**
+     * file2base64
+     */
+    function getBase64(file) {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+
+        return new Promise((resolve, reject) => {
+            reader.onload = function () {
+                // console.log(reader.result);
+                resolve(reader.result)
+            };
+            reader.onerror = function (error) {
+                console.log('Error: ', error);
+                reject(error)
+            };
+        })
+
+
+
+    }
+    /**
+     * 在这里写上传后的处理逻辑
+     * */
+    $("#file").change((e) => {
+        const file = e.target.files[0]
+        const type = file.type
+        if (!(type == 'image/png' || type == 'image/jpeg')) {
+            alert('请上传png或jpg')
+            return
+        }
+        const sliceLength = type === 'image/png' ? 22 : 23
+        getBase64(e.target.files[0]).then(res => {
+            $('.loadingTips').fadeIn()
+            $("#filePreviewer").html(`<img width="100%" src=${res} alt=""/>`)
+
+            /** 
+             * 请把该访问地址替换为您在“函数部署”里生成的域名
+             * */
+            $.ajax({
+                url: "http://service.ap-shanghai.apigateway.myqcloud.com/release/Word_Recognition", //只用替换这里
+                method: 'POST',
+                data: res.slice(sliceLength),
+                dataType: 'json',
+                success: (res) => {
+                    console.log(res)
+                    $("#showContainer").text(JSON.stringify(res && res.responseText ? res.responseText : res))
+                },
+                error: (e) => {
+                    console.log('Error: ', e)
+                    $("#showContainer").text(JSON.stringify(e && e.responseText ? e.responseText : e))
+                },
+
+            }).always(() => {
+                $('.loadingTips').fadeOut()
+            })
+        })
+
+
+
+    })
+</script>
+
+</html>
+
+
+<!-- url = " http://ops-apigateway.yohops.com/release/grafana/image/upload"
+file_name = 'mc6vhlWEl6XS2fdBvvN0.png'
+with open(file_name, 'rb') as data:
+requests.put("%s/%s" %(url,file_name), data=data) -->
